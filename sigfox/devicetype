@@ -1,0 +1,154 @@
+var callbackManagement = require("./callbackmanagement");
+
+/**
+ * This class wraps all operations that can be done on a specifci Sigfox device type
+ * @class DeviceType
+ * @constructor
+ * @param {Object} [dto]
+ * @param {String} [dto.id]: device type id
+ * @param {String} [dto.name] : optional. Name given to the device type by the group admin
+ * @param {String} [dto.group] : optional. Identifier of the group to which the device type belongds
+ * @param {String} [dto.description] : optional.
+ * @param {String} [dto.keepAlive]: optional. the keep alive in minutes (0 mean inactive)
+ * @param {String} [dto.payloadType] optional. Possible values "None", "String", "Custom", "Geolocation"
+ * @param {String} [dto.contract] : optional. Sigfox contract number
+ * @param {Object} client]: Sigfox HTTP client
+ * @throws {Error}
+ */
+function DeviceType(dto, client) {
+  
+  if (!dto || !client || !dto.id) {
+    
+    throw {
+      error: "Invalid_Parameter",
+      error: "DeviceType: client and dto.id (device type id) are mandatory parameters"
+    };
+  }
+  
+  for (var key in dto){
+    this[key] = dto[key];
+  }
+  
+  this.client = client;
+  this.callbackManager = null;
+}
+
+/**
+ * Get latest device type data from the server
+ * @return {Object} {id, name, group, description, keepAlive, payloadType, contract}
+ * @throws {Error}
+ */
+DeviceType.prototype.getInfo = function() {
+  
+  var requestParameters = {
+    url: config.urlPrefix + "/devicetypes/" + this.id
+  };
+  
+  var resp = this.client.callApi(requestParameters);
+  for (var key in dto){
+    this[key] = dto[key];
+  }
+  
+  return resp;
+};
+
+/**
+ * Obtain an instance of CallbackManager bound to this DeviceType to manage Callbacks
+ * @return {Object} instance CallbackManager
+ * @throws {Error}
+ */
+DeviceType.prototype.getCallbackManager = function() {
+  
+  if (!this.callbackManager) {
+    this.callbackManager = new callbackManagement.CallbackManager(this.client, this.id);
+  }
+  
+  return this.callbackManager;
+};
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @method createURLCallbacks
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks 
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). optional. Defaults to the bodyTemplate associated to the content-type
+ * @param {Object} [callback.headers]: optional headers of the callback msg
+ * @param {String} [callback.contentType]: optional, one of text/plain, application/json, application/x-www-form-urlencoded (default),
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+DeviceType.prototype.createURLCallbacks = function(list) {
+     return this.getCallbackManager().createURLCallbacks(list);
+};
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @method createBatchURLCallbacks
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks. IMPORTANT: the url should be suffixed with "var={batch}" 
+ * e.g. https://api.scriptrapps.io/sigfox/callbacks/defaultCallbacks?auth_token=123456789&var={batch}. batch will contain the linePattern.
+ * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+DeviceType.prototype.createBatchURLCallbacks = function(list) {
+  return this.getCallbackManager().createBatchURLCallbacks(list);
+};
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.subject]: the subject of the messages  
+ * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages 
+ * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+DeviceType.prototype.createEMAILCallbacks = function(list) {  
+  return this.getCallbackManager().createEMAILCallbacks(list);
+};
+
+/**
+ * @method listCallbacks
+ * @param {String} type: optional type (check CALLBACKTYPE) to filter results on the specified type
+ * @return {Array} of callback data {id, channel, callbackType, callbackSubtype, enabled, sendDuplicate, dead, payloadConfig}
+ * + {recipient, subject, message} if EMAIL {urlPattern, httpMethod, headers, downlinkHook} if URL
+ * @throws {Error}
+ */
+DeviceType.prototype.listCallbacks = function(type) {
+  return this.getCallbackManager().listCallbacks(); 
+};
+
+/**
+ * @method deleteCallback
+ * @param {String} id: the identifier of the callback to delete
+ * @return 
+ * @throws {Error}
+ */
+DeviceType.prototype.deleteCallback = function(id) {
+  return this.getCallbackManager().deleteCallback(id);
+};

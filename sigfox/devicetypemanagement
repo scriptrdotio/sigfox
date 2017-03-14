@@ -1,0 +1,66 @@
+var config = require("./config");
+var clientModule = require("./client");
+var deviceTypeModule = require("./devicetype");
+
+/**
+ * This class wraps some of Sigfox's device types operations
+ * @class DeviceTypeManager
+ * @constructor
+ * @param {String login} : sigfox login. Optional, defaults to ./config.username
+ * @param {String password} : sigfox password. Optional, defaults to ./config.password
+ * @throws {Error}
+ */
+function DeviceTypeManager(dto) {
+
+  if (dto){
+    
+    for (var key in dto) {
+      this[key] = dto[key];
+    }
+  }
+  
+  if (!this.login) {
+    this.username = config.login;
+  }
+  
+  if (!this.password) {
+    this.password = config.password;
+  }
+  
+  this.client = new clientModule.Client{login: this.login, password: this.password};
+}
+
+/**
+ * @method listDeviceTypes
+ * @param {Object} [params] : optional parameters
+ * @param {Boolean} [params.includeSubGroups]: if true, includes device types of the sub-groups of the current groups. Optional, defaults to false
+ * @param {String} [params.contractInfoId]: Sigfox contract id, used in the group 
+ * @return {Array} array of DeviceType objects (@see ./devicetype.DeviceType)
+ */
+DeviceTypeManager.prototype.listDeviceTypes = function(params) {
+  
+  var requestParameters = {
+    
+    url: config.urlPrefix + "/devicetypes",
+    method: "GET",
+    params: {}
+  };
+  
+  if (params && params.includeSubGroups) {
+    requestParameters.params.includeSubGroups = params.includeSubGroups;
+  }
+  
+  if (params && params.contractInfoId) {
+    requestParameters.params.contractInfoId = params.contractInfoId;
+  } 
+  
+  var resp = this.client.callApi(requestParameters).data;
+  var deviceTypeList = [];
+  for(var i = 0; i < resp.length; i++) {
+    
+    var deviceType = new deviceTypeModule.DeviceType(resp[i], this.client);
+    deviceTypeList.push(deviceType);
+  }
+  
+  return deviceTypeList;
+};

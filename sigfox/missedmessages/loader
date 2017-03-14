@@ -1,0 +1,76 @@
+var config = require("../config");
+var clientModule = require("../client");
+var log = require("log"); log.setLevel("info");
+
+/**
+ * @class Loader
+ * @constructor
+ */
+function Loader(dto) {
+  
+  this.client =  new clientModule.Client({username: config.username, password: config.password});
+  if (dto) {
+    
+    if (dot.handlers) {
+      this.handlers = dto.handlers;
+    }
+  }
+}
+
+/**
+ *
+ * @param {Number} [dto.offset]: number of messages skipped, used when paginating
+ * @param {Number} [dto.since]: return messages sent since this timestamp (in milliseconds since the Unix Epoch), optional, default to a month ago
+ * @param {Number} [dto.before]: return messages sent before this timestamp (in milliseconds since the Unix Epoch), optional
+ * @param {String} [dto.hexId]: device identifier (optional)
+ * @param {String} [dto.deviceTypeId]: device type identifier if no device identifier provided
+ * @param {String} [dto.groupId: group identifier if no device type identifier or device identifier provided 
+ * @param {Number} [dto.limit]: maximum number of messages to return, optional (defaults to 10)
+ * @param {Boolean} noHandling: if true, prevents the invocation of the appropriate handler for every unsent message (defaults to false)
+ */ 
+Loader.prototype.loadNextMissedMessages = function(dto, noHandling) {
+  
+  var requestParameters = {    
+    url: config.urlPrefix + "/callbacks/messages/error"
+  };
+  
+  if (dto) {
+    for (var key in dto) {
+      if (dto[key]){
+        requestParameters.params =  requestParameters.params ?  requestParameters.params : {};
+         requestParameters.params[key] = dto[key];
+      }
+    }    
+  }
+  
+  var resp = this.client.callApi(requestParameters).data;
+  if (!noHandling){
+    
+    for (var i = 0; resp && i < resp.length; i++){
+      this.handleMessage(resp[i]);
+    }
+  }
+  
+  return resp;
+};
+
+/**
+ * Use the handlers property or the configuration file to delegate the processing of unset messages
+ * @method handleMessage
+ * @param {Object} message: the unsent message
+ */
+Loader.prototype.handleMessage = function(message) {
+  
+  var handlers = this.handlers ? this.handlers : config.missedMsgHandlers;
+  var deviceType = message.deviceType;
+  if (handlers[deviceType]){
+    
+    var handlerModule = require(handlers[deviceType]);
+    handlerModule["handleMessageOf" + deviceType](message);
+  }else {
+    if (handlers["default"]) {
+      var handlerModule = require(handlers["default"]);
+      handlerModule.handleMessage(message);
+    }
+  }
+};

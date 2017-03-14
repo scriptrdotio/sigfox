@@ -1,0 +1,363 @@
+
+var config = require("./config");
+var log = require("log"); log.setLevel("info");
+
+const CALLBACKTYPE = {
+  DATA: 0,
+  SERVICE: 1,
+  ERROR: 2
+};
+
+const CALLBACKSUBTYPE = {
+  UPLINK: 2, // for DATA type
+  BIDIR: 3, // bidirectional, for DATA type
+  STATUS: 0, // callback sending information about the status of a device, for SERVICE type
+  GEOLOC: 1, // callback sent on a message that can be geolocated, for SERVICE type
+  ACKNOWLEDGE: 4  // callback sent on a downlink acknowledge message, for SERVICE type
+};
+
+const CHANNELTYPE = {
+  EMAIL: "EMAIL",
+  URL: "URL",
+  BATCH_URL: "BATCH_URL"
+};
+
+const CONTENTYPE = {
+  URLENCODED: "application/x-www-form-urlencoded",
+  APPJSON: "application/json",
+  TEXTPLAIN: "application/text"
+};
+
+/**
+ * Wraps Sigfox callback APIs
+ * @class CallbackManager
+ * @constructor
+ * @param {Object} client: instance of /client.Client
+ * @param {String} deviceType: a device type id. Binds this CallbackManabger instance to the device type
+ */
+function CallbackManager(client, deviceType) {
+  
+  if (!client || !deviceType) {
+    
+    throw {
+      error: "Invalid_Parameter",
+      error: "CallbackManager: client and deviceType are mandatory parameters"
+    };
+  }
+  
+  this.client = client;
+  this.id = deviceType;
+}
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @method createURLCallbacks
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks 
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). optional. Defaults to the bodyTemplate associated to the content-type
+ * @param {Object} [callback.headers]: optional headers of the callback msg
+ * @param {String} [callback.contentType]: optional, one of text/plain, application/json, application/x-www-form-urlencoded (default),
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+CallbackManager.prototype.createURLCallbacks = function(list) {
+     
+  if (!list) {
+    
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.createURLCallbacks: callbackList cannot be null or empty"
+    };
+  }
+  
+  // add the parameter to a list in case it wasn't 
+  if (!(list instanceof Array)) {
+    list = new Array(list);
+  }
+  
+  var callbackList = JSON.parse(JSON.stringify(list));
+  for (var i = 0; i < callbackList.length; i++) {  	
+    
+    callbackList[i].channel = CHANNELTYPE.URL;    
+    if (!callbackList[i].contentType) {
+      
+      callbackList[i].contentType = CONTENTYPE.URLENCODED;
+      log.warn("CallbackManager.createURLCallbacks: contentType was not specified in callback," + 
+               "using 'application/x-www-form-urlencoded'. Check bodyTemplate compatibility");
+    } 
+    
+    if (!callbackList[i].bodyTemplate) {
+      
+      log.warn("CallbackManager.createURLCallbacks: bodyTemplate was not specified in callback, will use default bodyTemplate matching content-type!");
+      switch(callbackList[i].contentType) {
+        
+        case CONTENTYPE.URLENCODED: callbackList[i].bodyTemplate = "device={device}&data={data}&time={time}";break;
+        case CONTENTYPE.APPJSON: callbackList[i].bodyTemplate = {"device":"{device}","data":"{data}","time":"{time}"};break;
+        case CONTENTYPE.TEXTPLAIN: callbackList[i].bodyTemplate = "device:{device}; data:{data}; time:{time}";break;
+        default: log.error("CallbackManager.createURLCallbacks: no bodyTemplate found matching content-type " + 
+                           callbackList[i].contentType + ". You might not receive any payload");
+      } 
+    } 
+  }    
+  
+  return this._invokeCreateCallbackApi(callbackList);
+};
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @method createBatchURLCallbacks
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks. IMPORTANT: the url should be suffixed with "var={batch}" 
+ * e.g. https://api.scriptrapps.io/sigfox/callbacks/defaultCallbacks?auth_token=123456789&var={batch}. batch will contain the linePattern.
+ * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+CallbackManager.prototype.createBatchURLCallbacks = function(list) {
+     
+  if (!list) {
+    
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.createBatchURLCallbacks: callbackList cannot be null or empty"
+    };
+  }
+  
+  // add the parameter to a list in case it wasn't 
+  if (!(list instanceof Array)) {
+    list = new Array(list);
+  }
+  
+  var callbackList = JSON.parse(JSON.stringify(list));
+  for (var i = 0; i < callbackList.length; i++) {  	
+    
+    callbackList[i].channel = CHANNELTYPE.BATCH_URL;      
+    if (!callbackList[i].url) {
+
+      callbackList[i].url = config.defaultCallbackUrl;
+      log.warn("CallbackManager.createBatchURLCallbacks: url was not specified in callback, using default");
+    } 
+    
+    if (callbackList[i].url.indexOf("var={batch}") == -1) {      
+      callbackList[i].url += callbackList[i].url.indexOf("?") > -1 ? "&var={batch}" : "?var={batch}";
+    }
+
+    if (!callbackList[i].linePattern) {
+      
+      callbackList[i].linePattern =  "device:{device},time:{time},data:{data}";
+      log.warn("CallbackManager.createBatchURLCallbacks: linePattern was not specified in callback, using default");
+    }
+  }    
+  
+  return this._invokeCreateCallbackApi(callbackList);
+};
+
+/**
+ * Create one or many simple URL callback(s) on that device-type
+ * Check documentation https://backend-demo.sigfox.com/apidocs/callback for bodyTemplate and contentType values
+ * @param {Array} [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.subject]: the subject of the messages  
+ * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages 
+ * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @return {Array} array of the ids of the callbacks that were created 
+ * @throws {Error}
+ */
+CallbackManager.prototype.createEMAILCallbacks = function(list) {
+  
+  if (!list) {
+    
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.createEMAILCallbacks: callbackList cannot be null or empty"
+    };
+  }
+  
+  // add the parameter to a list in case it wasn't 
+  if (!(list instanceof Array)) {
+    list = new Array(list);
+  }
+  
+  var callbackList = JSON.parse(JSON.stringify(list));
+  for (var i = 0; i < callbackList.length; i++) {  	
+    
+    if (!callbackList[i].subject || !callbackList[i].recipient || !callbackList[i].message) {
+      
+    	throw {
+          errorCode: "Missing_Parameter",
+          errorDetail: "CallbackManager.createEMAILCallbacks: subject, recipient or message cannot be null or empty " + JSON.stringify(callbackList[i])
+        };
+    }
+    
+    callbackList[i].channel = CHANNELTYPE.EMAIL;     
+  }
+  
+  return this._invokeCreateCallbackApi(callbackList);
+};
+
+/**
+ * @method listCallbacks
+ * @param {String} type: optional type (check CALLBACKTYPE) to filter results on the specified type
+ * @return {Array} of callback data {id, channel, callbackType, callbackSubtype, enabled, sendDuplicate, dead, payloadConfig}
+ * + {recipient, subject, message} if EMAIL {urlPattern, httpMethod, headers, downlinkHook} if URL
+ * @throws {Error}
+ */
+CallbackManager.prototype.listCallbacks = function(type) {
+  
+  var filter = type ? type.toUpperCase() : type;  
+  if (filter && Object.keys(CHANNELTYPE).indexOf(filter) == -1) {
+    
+    throw {
+      errorCode: "Invalid_Parameter",
+      errorDetail: "CallbackManager.listCallbacks: type is invalid(" + filter + ")"
+    };
+  }
+  
+  var requestParameters = {
+    
+    url: config.urlPrefix + "/devicetypes/" + this.id + "/callbacks",
+    method: "POST"
+  };
+  
+  var resp = this.client.callApi(requestParameters).data; 
+  if (filter) {
+    
+    for (var i = 0; i < resp.length; i++) {
+      
+      if (resp[i].channel != type) {
+        resp.splice(i, 1);
+      }
+    }
+  }
+  
+  return resp;
+};
+
+/**
+ * @method deleteCallback
+ * @param {String} id: the identifier of the callback to delete
+ * @return 
+ * @throws {Error}
+ */
+CallbackManager.prototype.deleteCallback = function(id) {
+     
+  if (!id) {
+    
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.deleteCallbacks: id cannot be null or empty"
+    };
+  }
+  
+  var instructionParams = {
+    
+    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/delete",
+    method: "POST"
+  };
+
+  this.client.callApi(instructionParams);
+  return "success";
+};
+
+/**
+ * @method enable
+ * @return 
+ * @throws {Error}
+ */
+CallbackManager.prototype.enable = function() {
+      
+  var instructionParams = {
+    
+    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/enable?enabled=true",
+    method: "POST"
+  };
+
+  this.client.callApi(instructionParams);
+  return "success";
+};
+
+/**
+ * @method disable
+ * @return 
+ * @throws {Error}
+ */
+CallbackManager.prototype.disable = function() {
+      
+  var instructionParams = {
+    
+    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/enable?enabled=false",
+    method: "POST"
+  };
+
+  this.client.callApi(instructionParams);
+  return "success";
+}; 
+
+/*
+ * Factors out the logic that is common to the creation callbacks
+ * @method _invokeCreateCallbackApi
+ */
+CallbackManager.prototype._invokeCreateCallbackApi = function(callbackList) {
+  
+  log.info("CallbackManager._invokeCreateCallbackApi: checking callback\n" + JSON.stringify(callbackList[i]));
+  for (var i = 0; i < callbackList.length; i++) {
+    
+    if (!callbackList[i].callbackType) {
+
+      callbackList[i].callbackType = CALLBACKTYPE.DATA;
+      log.warn("CallbackManager._invokeCreateCallbackApi: callbackType was not specified in callback, using default(" + CALLBACKTYPE.DATA + ")");
+    }
+
+    if (!callbackList[i].callbackSubtype) {
+
+      callbackList[i].callbackSubtype = CALLBACKSUBTYPE.UPLINK;
+      log.warn("CallbackManager._invokeCreateCallbackApi: callbackSubtype was not specified in callback, using default (" + CALLBACKSUBTYPE.UPLINK + ")");
+    }
+
+    if (!callbackList[i].enabled) { 
+
+      callbackList[i].enabled =  true;
+      log.warn("CallbackManager._invokeCreateCallbackApi: enabled was not specified in callback, setting enabled to true");
+    }
+
+    if (!callbackList[i].sendDuplicate) {
+
+      callbackList[i].sendDuplicate = false; 
+    }
+  }
+  
+  var instructionParams = {
+    
+    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/new",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    params: callbackList
+  };
+
+  var resp = this.client.callApi(instructionParams);
+  return resp;
+};

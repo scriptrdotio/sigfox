@@ -1,0 +1,24 @@
+/*
+ * Default credentials to use when invoking the API
+ */
+var login = "58ad6c0de0102e0f347954eb";
+var password = "44e96a007c9bb6fd96e7a3a430643f12";
+
+/*
+ * Sigfox API prefix
+ */
+const urlPrefix = "laxhttps://backend-demo.sigfox.com/api";
+
+/*
+ * Default URL to use as callback endpoint. Replace AUTH_TOKEN with a valid scriptr.io token
+ */
+const AUTH_TOKEN = "UzIyQTgwRjc2Ng=="; 
+var defaultCallbackUrl = "https://api.scriptrapps.io/sigfox/callbacks/defaultCallback?auth_token=" +  AUTH_TOKEN;
+
+/*
+ * Default configuration of message handlers per device types. When device type (key) is "default", point to the handler
+ * that processes unsent messages for all device types
+ */
+var missedMsgHandlers = {
+  "default": "/sigfox/missedmessages/defaulthandler" 
+};

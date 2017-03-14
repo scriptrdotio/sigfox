@@ -1,0 +1,5 @@
+var log = require("log");
+log.setLevel("info");
+log.info("Request\n" + JSON.stringify(request));
+log.info("Body\n" + JSON.stringify(request.body));
+log.info("Raw body\n" + JSON.stringify(request.rawBody));

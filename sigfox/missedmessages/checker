@@ -1,0 +1,37 @@
+/**
+ * This script should be schedule to regularly check for unsent messages at the Sigfox backend.
+ * It can also be invoked directly as an API
+ * @module missedmessagechecker
+ * @param {Number} offset: page offset, optional
+ * @param {Number} since: timestamp, optional
+ * @param {Number} before: timestamp, optional,
+ * @param {Number} limit: maximum number of messages to return, optional (defaults to 10)
+ * @param {String} hexId: device id, optional
+ * @param {String} deviceTypeId: optional
+ * @param {String} groupId: optional
+ */
+
+const LIMIT = 10;
+
+var log = require("log"); log.setLevel("info");
+var loaderModuler = require("./loader");
+try {
+
+  var dto = {
+    
+    offset: request.parameters.offset,
+    since: request.parameters.since,
+    before: request.parameters.before,
+    hexId: request.parameters.id ? request.parameters.id : request.parameters.hexId,
+    deviceTypeId: request.parameters.deviceTypeId,
+    groupId: request.parameters.groupId,
+    limit: request.parameters.limit ? request.parameters.limit : LIMIT
+  };
+    
+  var loader = new loaderModuler.Loader();
+  return loader.loadNextMissedMessages(dto); 
+}catch(exception){
+  
+  log.error("missedmessage: error occured while checking for missed messages\n" + JSON.stringify(exception));
+  return exception;
+}
