@@ -1,0 +1,55 @@
+/**
+ * Simple parser that handle data received in a callback request
+ * @module parser
+ */
+
+/**
+ * @function parse
+ * @param {Object} req: the scriptr.io request object
+ * @param {Object} specificParser: optional, if defined, will run the content through it before returning
+ * The specificParser should have a "parse()" function that will be invoked
+ * @return {Object}
+ */
+function parse(req, specificParser) {
+    
+    var obj = {};
+    var parameters = request.parameters; // if sent as GET + query string or POST + application/x-www-form-urlencoded
+    var body = req.body; // if sent as POST + application/json
+    var rawBody = req.rawBody; // if sent as POST + text/plain
+    
+    if (parameters) {
+        for (var key in parameters){
+            obj[key] = parameters[key];
+        }
+    }
+    
+    if (body) {
+        for (var key in body){
+            obj[key] = body[key];
+        }
+    }
+    
+    // Note: rawBody is expected by default to have the following structure:
+    // "device:xxx;data:some_payload;time:timestamp;rssi:yyy;avgSnr:yyy;station:zzz;lat:xy.zt;lng:ut.vw;seqNumber:1234"
+    if (rawBody && !body) {
+        
+        rawBody = rawBody.replace(/\"/g, "");
+        var keyvalues = rawBody.split(";");
+        for (var i = 0; keyvalues && i < keyvalues.length; i++) {
+            
+            var keyvalue = keyvalues[i].trim().split(":");
+            var key = keyvalue[0];
+            var value = keyvalue[1];
+            obj[key] = value;
+        }
+    }
+    
+    if (specificParser) {
+        var extras = specificParser.parse(request);
+        for (var key in extras){
+            obj[key] = extras[key];
+        }
+    }
+    
+    return obj;
+}
