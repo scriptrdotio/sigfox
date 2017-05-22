@@ -1,17 +1,23 @@
 # Callback
 
+When creating URL callbacks, you can specify the endpoint of the script that will receive the callbacks sent by Sigfox, However, if you omit to specify thi, then the "defaultCallback" script is used by default and will therefore be invoked by Sigfox upon message availability.
+
+"defaultCallback" uses the "parser" script to parse parameters sent along with the request it receives. The latter also forwards the parsing 
+to a specific parser, if one is defined. Hence, you can implement your own parser and specify its path in the "specificParser" variable of the "parserconfig" script.
+
+The "defaultCallback" script does not implement any specific logic and is just a pass through. It will however invoke the "execute(data)" function of the scripts of which path if declared in the "handlers" variable of the "parserconfig" script. You can hence implement callback handler scripts to handle the data that is sent by Sigfox.
+
 ## Defining the message template to be used by the callback
 
 When creating a callback on Sigfox, you can specify a message template (bodyTemplate field when creating a URL callback, lineTemplate field when creating a Batch URL callback and message when creating an Email callback).
 
 The message template can be parameterized with the following: device},{time},{duplicate},{snr},{station},{data},{avgSnr},{lat}{lng}{rssi},{seqNumber}
 
-The template's structure will vary depending on the channel you are using (URL, Batch URL, Email) and for the URL channel, depending on the specified message type. Note that default templates are predefined by the connector if you do not speciy anything.
+The template's structure will vary depending on the channel you are using (URL, Batch URL, Email) and for the URL channel, depending on the specified message type. Note that default templates are predefined by the connector if you do not specify anything yourself.
 
 - URL + content-type application/x-www-form-urlencoded: "device={device}&data={data}&time={time}"
 - URL + content-type application/json: {"device":"{device}","data":"{data}","time":"{time}"}
 - URL + content-type text/plain: "device:{device}; data:{data}; time:{time}"
-- 
 
 ## Understanding the callback payload 
 
