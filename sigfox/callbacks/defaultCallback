@@ -1,5 +1,44 @@
+/**
+ * Default callback that is invoked by default by Sigfox when no callback endpoint was specified when creating
+ * The data received depends on the bodyTemplate used when creating the callback. 
+ * The default structure
+ * a new callback on the Sigfox platform
+ * @module defaultCallback
+ * @param {Object} // 
+ *
+ */
+
 var log = require("log");
 log.setLevel("info");
-log.info("Request\n" + JSON.stringify(request));
-log.info("Body\n" + JSON.stringify(request.body));
-log.info("Raw body\n" + JSON.stringify(request.rawBody));
+
+var parser = require("./parser");
+var callbackconfig = require("./callbackconfig");
+
+log.info("/sigfox/defaultCalback received the following request: \n" + JSON.stringify(request));
+log.info("/sigfox/defaultCalback request Body\n" + JSON.stringify(request.body));
+log.info("/sigfox/defaultCalback request Raw body\n" + JSON.stringify(request.rawBody));
+
+try {
+    
+    // parse message
+    var pathToParser = callbackconfig.specificParser;
+    var specificParser = null;
+    if (pathToParser) {    
+       specificParser  = require(pathToParser);
+    }
+
+    var dataObj = parser.parse(request, specificParser);
+
+	// load handlers and execute them if any
+    for (var i = 0; callbackconfig.handlers && i < callbackconfig.handlers.length; i++){
+        
+        var handler = require(callbackconfig.handlers[i]);
+        handler.execute(dataObj);
+    }
+    
+    return "success";
+}catch(exception){
+    
+    log.error("/sigfox/defaultCalback failed\n" + JSON.stringify(exception));
+    throw exception;
+}
