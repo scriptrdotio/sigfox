@@ -1,0 +1,7 @@
+// set the path to the specific parser script
+var specificParser = ""; 
+
+// path to handlers that can process Sigfox messages
+var handlers = [
+  "./handlers/defaulthandler"  
+];
