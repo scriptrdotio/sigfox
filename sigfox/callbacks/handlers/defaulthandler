@@ -1,0 +1,15 @@
+/**
+ * Default handler that handles the processing of unset messages
+ * @module defaulthandler
+ */
+
+var log = require("log");
+log.setLevel("info");
+
+/**
+ * Default handling method, to be implemented by the defaut handler. Processes all messages
+ * @function handleMessage
+ */
+function handleMessage(message) {
+  log.info("Default unsent message handler: the following message was not sent by Sigfox's Backend\n" + JSON.stringify(message));
+}
