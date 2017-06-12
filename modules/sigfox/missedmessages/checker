@@ -15,7 +15,7 @@ const LIMIT = 10;
 
 var log = require("log"); log.setLevel("info");
 var loaderModuler = require("./loader");
-var config = require("./missedmsgconfig");
+var config = require("./missedmsgsconfig");
 try {
 
   var dto = {

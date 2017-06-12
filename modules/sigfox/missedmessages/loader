@@ -12,7 +12,7 @@ function Loader(dto) {
   this.client =  new clientModule.Client({username: config.username, password: config.password});
   if (dto) {
     
-    if (dot.handlers) {
+    if (dto.handlers) {
       this.handlers = dto.handlers;
     }
   }
