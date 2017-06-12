@@ -1,0 +1,85 @@
+/**
+ * Default callback to use when dealing with device messages sent as batch 
+ ** NOTE: Queued scripts feature should be activated on your account ! **
+ * @module defaultBatchCallback
+ * @param {Array} array of device messages as batch
+ * @return {String} "success" or "no_payload"
+ */
+
+var document = require("document");
+var log = require("log"); log.setLevel("info");
+var config = require("./callbackconfig");
+
+try {
+    
+    var batch = request.rawBody;
+    if (batch) {
+
+        var batchKey = saveBatch(batch);
+		startHandler(batchKey);
+        return "success";
+    }else {
+        return "no_payload";
+    }
+}catch(exception) {
+    return exception;
+}
+
+
+/**
+ * Persist the batch in a document for futher processing by a long running script
+ * @function saveBatch
+ * @param {String} batch: stringified array of device data sent by Sigfox
+ * @return {String} batch document key
+ * @throw {Error}
+ */
+function saveBatch(batch) {
+    
+    var fields = {
+        
+        type: "sigfox.batch",
+        batch: batch,
+        "meta.types": {
+            batch: "text"
+        }
+    };
+    
+    var resp = document.create(fields);
+    if (resp.metadata.status == "failure") {
+        
+        log.error("/sigfox/callbacks/defaultBatchCallback: could not persist batch \n" + JSON.stringify(resp));
+        throw {
+            
+            errorCode: "Cannot_Process_Batch",
+            errorDetail: JSON.stringify(resp)
+        };
+    }
+    
+    return resp.result.document.key;
+}
+
+/**
+ * Starts the long running script that handles the batch. If no handlers was specified, defaults to the script
+ * defined as default in ./callbackconfig
+ * @function startHandler
+ * @param {String} batchKey: the key of the document where the batch is stored. This is passed to the handler.
+ * @throw {Error}
+ */
+function startHandler(batchKey) {
+    
+    var handler = config.batchHandlers.batchHandler ? config.batchHandlers.batchHandler : config.batchHandlers.defaultHandler;    
+    var params = {
+
+        "apsdb.scriptName":handler, 
+        "batchKey": batchKey
+    };
+    
+    var resp = apsdb.callApi("QueueScript", params, null);
+    if (resp.metadata.status == "failure") {
+        
+        throw {
+          errorCode: "Cannot_Start_Batch_Handler",
+          errorDetail: JSON.stringify(resp)
+        };
+    }
+}
