@@ -15,3 +15,8 @@ const urlPrefix = "laxhttps://backend-demo.sigfox.com/api";
 const AUTH_TOKEN = "UzIyQTgwRjc2Ng=="; 
 var defaultCallbackUrl = "https://api.scriptrapps.io/sigfox/callbacks/defaultCallback?auth_token=" +  AUTH_TOKEN;
 
+/*
+ * Default URL to use as callback endpoint. Replace AUTH_TOKEN with a valid scriptr.io token
+ */
+var defaultBatchCallbackUrl = "https://api.scriptrapps.io/sigfox/callbacks/defaultBatchCallback?auth_token=" +  AUTH_TOKEN;
+
