@@ -64,3 +64,22 @@ DeviceTypeManager.prototype.listDeviceTypes = function(params) {
   
   return deviceTypeList;
 };
+
+
+/**
+ * @method getDeviceType
+ * @param {String} id : the requested device type id
+ * @return {Object} instance of DeviceType (@see ./devicetype.DeviceType)
+ */
+DeviceTypeManager.prototype.getDeviceType = function(id) {
+  
+  var requestParameters = {
+    
+    url: config.urlPrefix + "/devicetypes/" + id,
+    method: "GET"
+  };
+  
+  var resp = this.client.callApi(requestParameters);
+  var deviceType = new deviceTypeModule.DeviceType(resp, this.client);
+  return deviceType;
+};

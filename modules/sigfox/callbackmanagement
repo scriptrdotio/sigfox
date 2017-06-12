@@ -169,7 +169,7 @@ CallbackManager.prototype.createBatchURLCallbacks = function(list) {
     callbackList[i].channel = CHANNELTYPE.BATCH_URL;      
     if (!callbackList[i].url) {
 
-      callbackList[i].url = config.defaultCallbackUrl;
+      callbackList[i].url = config.defaultBatchCallbackUrl;
       log.warn("CallbackManager.createBatchURLCallbacks: url was not specified in callback, using default");
     } 
     

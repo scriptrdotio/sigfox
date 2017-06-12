@@ -1,0 +1,56 @@
+var config = require("./config");
+var clientModule = require("./client");
+var deviceModule = require("./device");
+
+/**
+ * This class wraps some of Sigfox's deviceoperations
+ * @class DeviceManager
+ * @constructor
+ * @param {String login} : sigfox login. Optional, defaults to ./config.username
+ * @param {String password} : sigfox password. Optional, defaults to ./config.password
+ * @throws {Error}
+ */
+function DeviceManager(dto) {
+
+    if (dto){
+
+        for (var key in dto) {
+            this[key] = dto[key];
+        }
+    }
+
+    if (!this.login) {
+        this.username = config.login;
+    }
+
+    if (!this.password) {
+        this.password = config.password;
+    }
+
+    this.client = new clientModule.Client{login: this.login, password: this.password};
+}
+
+/**
+ * Tries to return device data in an instance of Device
+ * @method getDevice
+ * @param {String} id: the device's id
+ * @param {boolean} wrapperOnly: if true, instructs the connector to only return an empty device instance (do not issue call to Sigfox API). Defaults to false
+ * @return {Object} instance of Device
+ * @throws {Error}
+ */
+DeviceManager.prototype.getDevice = function(id, wrapperOnly) {
+
+    if (wrapperOnly) {
+        return new deviceModule({id: id, client: this.client});
+    }
+
+    var requestParameters = {
+
+        url: config.urlPrefix + "/devices/"+ id,
+        method: "GET"
+    };
+    
+    var resp = this.client.callApi(requestParameters);
+    resp.client = this.client
+    return new deviceModule.Device(resp); 
+};

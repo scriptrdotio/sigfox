@@ -1,0 +1,38 @@
+var config = require("./config");
+
+/**
+ * Wrapper around device APIs
+ * @class Device
+ * @constructor
+ * @param {Object} dto: contains the device's properties (id and client are mandatory)
+ */
+function Device(dto) {
+    
+    if (!dto || !dto.id || !dto.client) {
+        
+        throw {
+            errorCode: "Missing_Parameter",
+            errorDetail: "/sigfox/device: dto.id and dto.client cannot be null or empty"
+        };
+    }
+    
+    for (var key in dto){
+        this[key] = dto[key];
+    }
+}
+
+/**
+ * Get latest current network status of the device
+ * @method getNetworkState
+ * @return {Object} {networkStatus: "OK|NOK"}
+ * @throws {Error}
+ */
+Device.prototype.getNetworkState = function() {
+  
+  var requestParameters = {
+    url: config.urlPrefix + "/devices/" + this.id + "/networkstate" 
+  };
+  
+  var resp = this.client.callApi(requestParameters);
+  return resp;
+};
