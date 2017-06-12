@@ -1,0 +1,9 @@
+/**
+ * Declare handlers that will process missed messages per device type
+ * When device type (key) is "default", point to the handler that processes unsent messages for all device types
+ * A handler is a script that exposes a handle(message) function
+ */
+
+var missedMsgHandlers = {
+  "default": "/sigfox/missedmessages/defaulthandler" 
+};

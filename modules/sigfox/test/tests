@@ -2,124 +2,125 @@ var deviceTypeMgt = require("../devicetypemanagement");
 var deviceType = require("../devicetype");
 
 try {
-  
-  var deviceTypeMgr = new deviceTypeMgt.DeviceTypeManager({login:"58ad6c0de0102e0f347954eb", password: "44e96a007c9bb6fd96e7a3a430643f12"});
-  
+
+    var deviceTypeMgr = new deviceTypeMgt.DeviceTypeManager({login:"58ad6c0de0102e0f347954eb", password: "44e96a007c9bb6fd96e7a3a430643f12"});
+
   /*
    * list available device types 
    */
-  var deviceTypeList = deviceTypeMgr.listDeviceTypes();
-  
+    var deviceTypeList = deviceTypeMgr.listDeviceTypes();
+
   /*
    * Create URL callbacks
    */
-  //var resp = createURLCallbacks(deviceTypeList);
-  //return resp;
-  
-   /*
+    var resp = createURLCallbacks(deviceTypeList);
+    return resp;
+
+  /*
    * Create Batch URL callbacks
    */
-  var resp = createBatchURLCallbacks(deviceTypeList);
-  //return resp;
-  
+    var resp = createBatchURLCallbacks(deviceTypeList);
+    //return resp;
+
   /*
    * Create EMAIL callbacks
    */
-  var resp = createEMAILCallbacks(deviceTypeList);
-  //return resp;
-  
+    var resp = createEMAILCallbacks(deviceTypeList);
+    //return resp;
+
   /*
    * List created callbacks
    */
-  var callbackList = listCallbacks(deviceTypeList);
-  return callbackList;
-  
+    var callbackList = listCallbacks(deviceTypeList);
+    return callbackList;
+
   /*
    * List created callbacks with channel == URL
    */
-  //var callbackList = listCallbacks(deviceTypeList, deviceType.CHANNELTYPE.URL);
-  //return callbackList;
-  
+    //var callbackList = listCallbacks(deviceTypeList, deviceType.CHANNELTYPE.URL);
+    //return callbackList;
+
   /*
    * Delete callback
    */  
-  //return deleteCallback(callbackList, deviceTypeList); 
+    //return deleteCallback(callbackList, deviceTypeList); 
 }catch(exception){
-  return exception;
+    return exception;
 }
 
 function createURLCallbacks(deviceTypeList) {
-  
-  if (deviceTypeList && deviceTypeList.length > 0) {
-    
-    var deviceType = deviceTypeList[0];
-    var callback = {
-      "url": "https://iotdemos.scriptrapps.io/sigfox/callbacks/defaultCallback"
-    };
 
-    var createCallbackResult = deviceType.createURLCallbacks([callback]);
-    return createCallbackResult;
-  }
-  
-  throw "createCallbacks: deviceTypeList is null or empty";  
+    if (deviceTypeList && deviceTypeList.length > 0) {
+
+        var deviceType = deviceTypeList[0];
+        var callback = {
+            "url": "https://sigfox.scriptrapps.io/modules/sigfox/callbacks/defaultCallback",
+            "contentType": "text/plain"
+        };
+
+        var createCallbackResult = deviceType.createURLCallbacks([callback]);
+        return createCallbackResult;
+    }
+
+    throw "createCallbacks: deviceTypeList is null or empty";  
 }
 
 function createBatchURLCallbacks(deviceTypeList) {
-  
-  if (deviceTypeList && deviceTypeList.length > 0) {
-    
-    var deviceType = deviceTypeList[0];
-    var callback = {
-      "url": "https://iotdemos.scriptrapps.io/sigfox/callbacks/defaultCallback"
-    };
 
-    var createCallbackResult = deviceType.createBatchURLCallbacks([callback]);
-    return createCallbackResult;
-  }
-  
-  throw "createCallbacks: deviceTypeList is null or empty";  
+    if (deviceTypeList && deviceTypeList.length > 0) {
+
+        var deviceType = deviceTypeList[0];
+        var callback = {
+            "url": "https://sigfox.scriptrapps.io/modules/sigfox/callbacks/defaultCallback"          
+        };
+
+        var createCallbackResult = deviceType.createBatchURLCallbacks([callback]);
+        return createCallbackResult;
+    }
+
+    throw "createCallbacks: deviceTypeList is null or empty";  
 }
 
 function createEMAILCallbacks(deviceTypeList) {
-  
-  if (deviceTypeList && deviceTypeList.length > 0) {
-    
-    var deviceType = deviceTypeList[0];
-    var callback = {
-      "recipient": "karim@scriptr.io",
-      "subject": "Device data",
-      "message": "{device} sent {data} on {time}"
-    };
 
-    var createCallbackResult = deviceType.createEMAILCallbacks([callback]);
-    return createCallbackResult;
-  }
-  
-  throw "createCallbacks: deviceTypeList is null or empty";  
+    if (deviceTypeList && deviceTypeList.length > 0) {
+
+        var deviceType = deviceTypeList[0];
+        var callback = {
+            "recipient": "karim@scriptr.io",
+            "subject": "Device data",
+            "message": "{device} sent {data} on {time}"
+        };
+
+        var createCallbackResult = deviceType.createEMAILCallbacks([callback]);
+        return createCallbackResult;
+    }
+
+    throw "createCallbacks: deviceTypeList is null or empty";  
 }
 
 
 function listCallbacks(deviceTypeList, type) {
-  
-  if (deviceTypeList && deviceTypeList.length > 0) {
-    
-    var deviceType = deviceTypeList[0];
-    var callbackList = deviceType.listCallbacks(type);
-    return callbackList;
-  }
-  
-  throw "listCallbacks: deviceTypeList is null or empty";  
+
+    if (deviceTypeList && deviceTypeList.length > 0) {
+
+        var deviceType = deviceTypeList[0];
+        var callbackList = deviceType.listCallbacks(type);
+        return callbackList;
+    }
+
+    throw "listCallbacks: deviceTypeList is null or empty";  
 }
 
 function deleteCallback(callbackList) {
- 
-  if (!deviceTypeList || deviceTypeList.length == 0) {
-    throw "deleteCallback: deviceTypeList is null or empty";  
-  }
-  
-  if (callbackList && callbackList.length > 0) {
-    return deviceTypeList[0].deleteCallback(callbackList[0].id);
-  }
-  
-  throw "deleteCallback: callbackList is null or empty";  
+
+    if (!deviceTypeList || deviceTypeList.length == 0) {
+        throw "deleteCallback: deviceTypeList is null or empty";  
+    }
+
+    if (callbackList && callbackList.length > 0) {
+        return deviceTypeList[0].deleteCallback(callbackList[0].id);
+    }
+
+    throw "deleteCallback: callbackList is null or empty";  
 }

@@ -3,6 +3,7 @@ var clientModule = require("../client");
 var log = require("log"); log.setLevel("info");
 
 /**
+ * The loader is in charge of invoking Sigfox's missed messages API 
  * @class Loader
  * @constructor
  */
@@ -55,13 +56,13 @@ Loader.prototype.loadNextMissedMessages = function(dto, noHandling) {
 };
 
 /**
- * Use the handlers property or the configuration file to delegate the processing of unset messages
+ * Use the handlers property or the configuration file to delegate the processing of unsent messages
  * @method handleMessage
  * @param {Object} message: the unsent message
  */
 Loader.prototype.handleMessage = function(message) {
   
-  var handlers = this.handlers ? this.handlers : config.missedMsgHandlers;
+  var handlers = this.handlers ;
   var deviceType = message.deviceType;
   if (handlers[deviceType]){
     

@@ -1,5 +1,5 @@
 /**
- * This script should be schedule to regularly check for unsent messages at the Sigfox backend.
+ * This script should be scheduled to regularly check for unsent messages at the Sigfox backend.
  * It can also be invoked directly as an API
  * @module missedmessagechecker
  * @param {Number} offset: page offset, optional
@@ -15,6 +15,7 @@ const LIMIT = 10;
 
 var log = require("log"); log.setLevel("info");
 var loaderModuler = require("./loader");
+var config = require("./missedmsgconfig");
 try {
 
   var dto = {
@@ -28,7 +29,7 @@ try {
     limit: request.parameters.limit ? request.parameters.limit : LIMIT
   };
     
-  var loader = new loaderModuler.Loader();
+  var loader = new loaderModuler.Loader({handlers:config.missedMsgHandlers});
   return loader.loadNextMissedMessages(dto); 
 }catch(exception){
   
