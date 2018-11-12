@@ -1,6 +1,6 @@
 # Callback
 
-When creating URL callbacks, you can specify the endpoint of the script that will receive the callbacks sent by Sigfox, However, if you omit to specify thi, then the "defaultCallback" script is used by default and will therefore be invoked by Sigfox upon message availability.
+When creating URL callbacks, you can specify the endpoint of the script that will receive the callbacks sent by Sigfox, However, if you omit to specify this, then the "defaultCallback" script is used by default and will therefore be invoked by Sigfox upon message availability.
 
 "defaultCallback" uses the "parser" script to parse parameters sent along with the request it receives. The latter also forwards the parsing 
 to a specific parser, if one is defined. Hence, you can implement your own parser and specify its path in the "specificParser" variable of the "parserconfig" script.
@@ -21,7 +21,7 @@ The template's structure will vary depending on the channel you are using (URL, 
 
 ## Understanding the callback payload 
 
-When creating a callback, it is necessary to define the format of the expected payload, in order to allow Sigfox to understand how to parse the data it is sneding. The below is taken from Sigfox's API documentation:
+When creating a callback, it is necessary to define the format of the expected payload, in order to allow Sigfox to understand how to parse the data it is sending. The below is taken from Sigfox's API documentation:
 
 The "custom format" grammar is as follows :
 - format = field_def [" " field_def]* ;
