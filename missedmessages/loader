@@ -20,33 +20,48 @@ function Loader(dto) {
 
 /**
  *
- * @param {Number} [dto.offset]: number of messages skipped, used when paginating
- * @param {Number} [dto.since]: return messages sent since this timestamp (in milliseconds since the Unix Epoch), optional, default to a month ago
- * @param {Number} [dto.before]: return messages sent before this timestamp (in milliseconds since the Unix Epoch), optional
+ * @param {Number} [dto.since]: integer <int64> Starting timestamp (in milliseconds since Unix Epoch).
+ * @param {Number} [dto.before]: integer <int64> Ending timestamp (in milliseconds since Unix Epoch).
+ * @param {Number} [dto.limit]: integer <int32> Default: 100 Defines the maximum number of items to return
+ * @param {Number} [dto.offset]: integer <int32> Default: 0 Defines the number of items to skip.
  * @param {String} [dto.hexId]: device identifier (optional)
  * @param {String} [dto.deviceTypeId]: device type identifier if no device identifier provided
  * @param {String} [dto.groupId: group identifier if no device type identifier or device identifier provided 
- * @param {Number} [dto.limit]: maximum number of messages to return, optional (defaults to 10)
+ 
  * @param {Boolean} noHandling: if true, prevents the invocation of the appropriate handler for every unsent message (defaults to false)
  */ 
 Loader.prototype.loadNextMissedMessages = function(dto, noHandling) {
-  
+  var urlString = "";
+  var idString = "";
+  if (dto["hexId"]){
+      urlString = "/devices/" +  dto["hexId"]  + "/callbacks-not-delivered";
+      idString = dto["hexId"];
+  } else if(dto["deviceTypeId"]){
+      urlString = "/device-types/" + dto["deviceTypeId"] + "/callbacks-not-delivered";
+      idString = dto["deviceTypeId"];
+  } else if(dto["groupId"]){
+      urlString = "/groups/" + dto["groupId"] + "/callbacks-not-delivered";
+      idString = dto["groupId"];
+  }
   var requestParameters = {    
-    url: config.urlPrefix + "/callbacks/messages/error"
+    url: config.urlPrefix + urlString
   };
-  
+  dto["hexId"] = null;
+  dto["deviceTypeId"] = null;
+  dto["groupId"] = null;
+    
   if (dto) {
+    requestParameters.params =  requestParameters.params ?  requestParameters.params : {};
     for (var key in dto) {
       if (dto[key]){
-        requestParameters.params =  requestParameters.params ?  requestParameters.params : {};
-         requestParameters.params[key] = dto[key];
+          requestParameters.params[key] = dto[key];
       }
-    }    
+    }
+    requestParameters.params["id"] = idString;
   }
   
   var resp = this.client.callApi(requestParameters).data;
   if (!noHandling){
-    
     for (var i = 0; resp && i < resp.length; i++){
       this.handleMessage(resp[i]);
     }

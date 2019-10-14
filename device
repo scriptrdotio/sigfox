@@ -30,9 +30,39 @@ function Device(dto) {
 Device.prototype.getNetworkState = function() {
   
   var requestParameters = {
-    url: config.urlPrefix + "/devices/" + this.id + "/networkstate" 
+    url: config.urlPrefix + "/devices/" + this.id 
   };
   
   var resp = this.client.callApi(requestParameters);
-  return resp;
+  var networkStateCode = resp.state;
+  var networkState = "";
+  switch (networkStateCode){
+      case 0: 
+          networkState = "OK";
+          break;
+      case 1:
+          networkState = "DEAD";
+          break;
+      case 2:
+          networkState = "OFF_CONTRACT";
+          break;
+      case 3:
+          networkState = "DISABLED";
+          break;
+      case 4:
+          networkState = "WARN";
+          break;
+      case 5:
+          networkState = "DELETED";
+          break;
+      case 6:
+          networkState = "SUSPENDED";
+          break;
+      case 7:
+          networkState = "NOT_ACTIVABLE";
+          break;
+      default:
+          networkState = "Unrecognized Code";
+  }
+  return {"code":networkStateCode, "networkState":networkState};
 };

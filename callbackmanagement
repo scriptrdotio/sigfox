@@ -12,8 +12,10 @@ const CALLBACKSUBTYPE = {
   UPLINK: 2, // for DATA type
   BIDIR: 3, // bidirectional, for DATA type
   STATUS: 0, // callback sending information about the status of a device, for SERVICE type
-  GEOLOC: 1, // callback sent on a message that can be geolocated, for SERVICE type
-  ACKNOWLEDGE: 4  // callback sent on a downlink acknowledge message, for SERVICE type
+  GEOLOC: 1, // !! DEPREATED SINCE JUNE 2019 !! callback sent on a message that can be geolocated, for SERVICE type
+  ACKNOWLEDGE: 4,  // callback sent on a downlink acknowledge message, for SERVICE type
+  REPEATER: 5, // REPEATER callback triggered when a repeater sends an OOB, for SERVICE type
+  DATA_ADVANCED: 6 // DATA_ADVANCED callback sent on a message that can be geolocated, for SERVICE type
 };
 
 const CHANNELTYPE = {
@@ -58,15 +60,17 @@ function CallbackManager(client, deviceType) {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
  * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks 
  * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
  * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
  * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
  * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
  * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
  * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). optional. Defaults to the bodyTemplate associated to the content-type
  * @param {Object} [callback.headers]: optional headers of the callback msg
+ * @param {Object} [callback.downlinkHook]: True if this callback is used for downlink, else false, Optional
  * @param {String} [callback.contentType]: optional, one of text/plain, application/json, application/x-www-form-urlencoded (default),
  * @return {Array} array of the ids of the callbacks that were created 
  * @throws {Error}
@@ -89,7 +93,13 @@ CallbackManager.prototype.createURLCallbacks = function(list) {
   var callbackList = JSON.parse(JSON.stringify(list));
   for (var i = 0; i < callbackList.length; i++) {  	
     
-    callbackList[i].channel = CHANNELTYPE.URL;    
+    callbackList[i].channel = CHANNELTYPE.URL;
+    if (!callbackList[i].url) {
+
+      callbackList[i].url = config.defaultCallbackUrl;
+      log.warn("CallbackManager.createURLCallbacks: url was not specified in callback, using default");
+    } 
+    
     if (!callbackList[i].contentType) {
       
       callbackList[i].contentType = CONTENTYPE.URLENCODED;
@@ -110,20 +120,22 @@ CallbackManager.prototype.createURLCallbacks = function(list) {
       switch(callbackList[i].contentType) {
         
         case CONTENTYPE.URLENCODED: callbackList[i].bodyTemplate = 
-          "device={device}&data={data}&time={time}&snr={snr}&rssi={rssi}&avgSnr={avgSnr}&station={station}&lat={lat}&lng={lng}&seqNumber={seqNumber}";break;
+          	"device={device}&data={data}&time={time}&snr={snr}&rssi={rssi}&avgSnr={avgSnr}&station={station}&lat={lat}&lng={lng}&seqNumber={seqNumber}";
+        	break;
         case CONTENTYPE.APPJSON: callbackList[i].bodyTemplate = 
-          {
-            "device":"{device}","data":"{data}","time":"{time}","snr":"{snr}","rssi":"{rssi}",
-            "avgSnr":"{avgSnr}","station":"{station}","lat":"{lat}","lng":"{lng}","seqNumber":"{seqNumber}"
-          };break;
+            {
+                "device":"{device}","data":"{data}","time":"{time}","snr":"{snr}","rssi":"{rssi}",
+                "avgSnr":"{avgSnr}","station":"{station}","lat":"{lat}","lng":"{lng}","seqNumber":"{seqNumber}"
+            };
+            callbackList[i].bodyTemplate = JSON.stringify(callbackList[i].bodyTemplate);
+            break;
         case CONTENTYPE.TEXTPLAIN: callbackList[i].bodyTemplate = 
-            "device:{device}; data:{data};time:{time};rssi:{rssi};avgSnr:{avgSnr};station:{station};lat:{lat};lng:{lng};seqNumber:{seqNumber}";break;
+            "device:{device}; data:{data};time:{time};rssi:{rssi};avgSnr:{avgSnr};station:{station};lat:{lat};lng:{lng};seqNumber:{seqNumber}";
+            break;
         default: log.error("CallbackManager.createURLCallbacks: no bodyTemplate found matching content-type " + 
                            callbackList[i].contentType + ". You might not receive any payload");
       } 
-    } 
-      
-    callbackList[i].bodyTemplate = JSON.stringify(callbackList[i].bodyTemplate);
+    }     
       console.log("bodyTemplate " + callbackList[i].bodyTemplate);
   }    
   
@@ -137,13 +149,15 @@ CallbackManager.prototype.createURLCallbacks = function(list) {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
- * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks. IMPORTANT: the url should be suffixed with "var={batch}" 
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultBatchCallback. IMPORTANT: the url should be suffixed with "var={batch}" 
  * e.g. https://api.scriptrapps.io/sigfox/callbacks/defaultCallbacks?auth_token=123456789&var={batch}. batch will contain the linePattern.
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
  * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.)
  * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
  * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
  * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
  * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
  * @return {Array} array of the ids of the callbacks that were created 
  * @throws {Error}
@@ -182,6 +196,13 @@ CallbackManager.prototype.createBatchURLCallbacks = function(list) {
       callbackList[i].linePattern =  "device:{device},time:{time},data:{data}";
       log.warn("CallbackManager.createBatchURLCallbacks: linePattern was not specified in callback, using default");
     }
+    
+    if (!callbackList[i].httpMethod) {
+      
+      callbackList[i].httpMethod = DEFAULT_HTTP_METHOD;
+      log.warn("CallbackManager.createBatchURLCallbacks: httpMethod was not specified in callback," + 
+               "using 'POST'. Check bodyTemplate compatibility if needed");
+    }  
   }    
   
   return this._invokeCreateCallbackApi(callbackList);
@@ -193,12 +214,13 @@ CallbackManager.prototype.createBatchURLCallbacks = function(list) {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
  * @param {Number} [callback.subject]: the subject of the messages  
  * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages 
  * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.)
  * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
  * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
  * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
  * @return {Array} array of the ids of the callbacks that were created 
  * @throws {Error}
@@ -219,7 +241,7 @@ CallbackManager.prototype.createEMAILCallbacks = function(list) {
   }
   
   var callbackList = JSON.parse(JSON.stringify(list));
-  for (var i = 0; i < callbackList.length; i++) {  	
+  for (var i = 0; i < callbackList.length; i++) {
     
     if (!callbackList[i].subject || !callbackList[i].recipient || !callbackList[i].message) {
       
@@ -255,15 +277,15 @@ CallbackManager.prototype.listCallbacks = function(type) {
   
   var requestParameters = {
     
-    url: config.urlPrefix + "/devicetypes/" + this.id + "/callbacks",
-    method: "POST"
+    url: config.urlPrefix + "/device-types/" + this.id + "/callbacks",
+    method: "GET"
   };
   
   var resp = this.client.callApi(requestParameters).data; 
+
   if (filter) {
-    
-    for (var i = 0; i < resp.length; i++) {
-      
+    var respLength = resp.length;
+    for (var i = respLength-1; i >= 0; i--) {
       if (resp[i].channel != type) {
         resp.splice(i, 1);
       }
@@ -271,6 +293,79 @@ CallbackManager.prototype.listCallbacks = function(type) {
   }
   
   return resp;
+};
+
+/**
+ * Update a callback based on its id
+ * @method updateCallback
+ * @param {String} id: the identifier of the callback to update
+ * @param {Array}  [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.subject]: the subject of the messages (Required for EMAIL)
+ * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages (Required for EMAIL)
+ * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.) (Required for EMAIL)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @param {Number} [callback.url]: callback URL (Required for URL and BATCH_URL)
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST" (URL and BATCH_URL)
+ * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.) (Required for BATCH_URL)
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. (URL and BATCH_URL)
+ * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). (URL)
+ * @param {Object} [callback.headers]: optional headers of the callback msg (URL)
+ * @param {Object} [callback.downlinkHook]: True if this callback is used for downlink (URL) 
+ * @return 
+ * @throws {Error}
+ */
+CallbackManager.prototype.updateCallback = function(id, list, channel) {
+     
+  if (!id || !list) {
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.updateCallback: id or a mandatory param is missing"
+    };
+  }
+  
+  list.channel = channel;     
+    
+  if (!list.callbackType) {
+
+    list.callbackType = CALLBACKTYPE.DATA;
+    log.warn("CallbackManager.updateCallback: callbackType was not specified in callback, using default(" + CALLBACKTYPE.DATA + ")");
+  }
+
+  if (!list.callbackSubtype) {
+
+    list.callbackSubtype = CALLBACKSUBTYPE.UPLINK;
+    log.warn("CallbackManager.updateCallback: callbackSubtype was not specified in callback, using default (" + CALLBACKSUBTYPE.UPLINK + ")");
+  }
+
+  if (!list.enabled && list.enabled != false) { 
+
+    list.enabled =  true;
+    log.warn("CallbackManager.updateCallback: enabled was not specified in callback, setting enabled to true");
+  }
+
+  if (!list.sendDuplicate && list.sendDuplicate != false) {
+
+    list.sendDuplicate = false; 
+  }
+  
+  var instructionParams = {
+    
+    url: config.urlPrefix + "/device-types/"+ this.id + "/callbacks/" + id,
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    params: list
+  };
+
+  this.client.callApi(instructionParams);
+  return "success";
 };
 
 /**
@@ -282,7 +377,6 @@ CallbackManager.prototype.listCallbacks = function(type) {
 CallbackManager.prototype.deleteCallback = function(id) {
      
   if (!id) {
-    
     throw {
       errorCode: "Missing_Parameter",
       errorDetail: "CallbackManager.deleteCallbacks: id cannot be null or empty"
@@ -291,8 +385,8 @@ CallbackManager.prototype.deleteCallback = function(id) {
   
   var instructionParams = {
     
-    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/delete",
-    method: "POST"
+    url: config.urlPrefix + "/device-types/"+ this.id + "/callbacks/" + id,
+    method: "DELETE"
   };
 
   this.client.callApi(instructionParams);
@@ -304,12 +398,19 @@ CallbackManager.prototype.deleteCallback = function(id) {
  * @return 
  * @throws {Error}
  */
-CallbackManager.prototype.enable = function() {
+CallbackManager.prototype.enable = function(id) {
       
+  if (!id) {
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.enable: id cannot be null or empty"
+    };
+  }
+    
   var instructionParams = {
     
-    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/enable?enabled=true",
-    method: "POST"
+    url: config.urlPrefix + "/device-types/"+ this.id + "/callbacks/" + id + "/enable?enabled=true",
+    method: "PUT"
   };
 
   this.client.callApi(instructionParams);
@@ -321,12 +422,19 @@ CallbackManager.prototype.enable = function() {
  * @return 
  * @throws {Error}
  */
-CallbackManager.prototype.disable = function() {
+CallbackManager.prototype.disable = function(id) {
       
+  if (!id) {
+    throw {
+      errorCode: "Missing_Parameter",
+      errorDetail: "CallbackManager.disable: id cannot be null or empty"
+    };
+  }
+    
   var instructionParams = {
     
-    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/" + id + "/enable?enabled=false",
-    method: "POST"
+    url: config.urlPrefix + "/device-types/"+ this.id + "/callbacks/" + id + "/enable?enabled=false",
+    method: "PUT"
   };
 
   this.client.callApi(instructionParams);
@@ -354,26 +462,26 @@ CallbackManager.prototype._invokeCreateCallbackApi = function(callbackList) {
       log.warn("CallbackManager._invokeCreateCallbackApi: callbackSubtype was not specified in callback, using default (" + CALLBACKSUBTYPE.UPLINK + ")");
     }
 
-    if (!callbackList[i].enabled) { 
+    if (!callbackList[i].enabled && callbackList[i].enabled != false) { 
 
       callbackList[i].enabled =  true;
       log.warn("CallbackManager._invokeCreateCallbackApi: enabled was not specified in callback, setting enabled to true");
     }
 
-    if (!callbackList[i].sendDuplicate) {
+    if (!callbackList[i].sendDuplicate && callbackList[i].sendDuplicate != false) {
 
       callbackList[i].sendDuplicate = false; 
     }
   }
-  
+
   var instructionParams = {
     
-    url: config.urlPrefix + "/devicetypes/"+ this.id + "/callbacks/new",
+    url: config.urlPrefix + "/device-types/"+ this.id + "/callbacks",
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    params: callbackList
+    params: callbackList[0]
   };
 
   log.info("CallbackManager._invokeCreateCallbackApi: sending:\n" + JSON.stringify(instructionParams));  

@@ -2,16 +2,17 @@
  * This script should be scheduled to regularly check for unsent messages at the Sigfox backend.
  * It can also be invoked directly as an API
  * @module missedmessagechecker
- * @param {Number} offset: page offset, optional
- * @param {Number} since: timestamp, optional
- * @param {Number} before: timestamp, optional,
- * @param {Number} limit: maximum number of messages to return, optional (defaults to 10)
+ * @param {Number} since: integer <int64> Starting timestamp (in milliseconds since Unix Epoch).
+ * @param {Number} before: integer <int64> Ending timestamp (in milliseconds since Unix Epoch).
+ * @param {Number} limit: integer <int32> Default: 100 Defines the maximum number of items to return
+ * @param {Number} offset: integer <int32> Default: 0 Defines the number of items to skip.
  * @param {String} hexId: device id, optional
  * @param {String} deviceTypeId: optional
  * @param {String} groupId: optional
  */
 
-const LIMIT = 10;
+const LIMIT = 100;
+const OFFSET = 0;
 
 var log = require("log"); log.setLevel("info");
 var loaderModuler = require("./loader");
@@ -19,14 +20,13 @@ var config = require("./missedmsgsconfig");
 try {
 
   var dto = {
-    
-    offset: request.parameters.offset,
     since: request.parameters.since,
     before: request.parameters.before,
+    limit: request.parameters.limit ? request.parameters.limit : LIMIT,
+    offset: request.parameters.offset ? request.parameters.offset : OFFSET,
     hexId: request.parameters.id ? request.parameters.id : request.parameters.hexId,
     deviceTypeId: request.parameters.deviceTypeId,
-    groupId: request.parameters.groupId,
-    limit: request.parameters.limit ? request.parameters.limit : LIMIT
+    groupId: request.parameters.groupId
   };
     
   var loader = new loaderModuler.Loader({handlers:config.missedMsgHandlers});

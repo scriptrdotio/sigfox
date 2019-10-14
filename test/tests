@@ -1,6 +1,7 @@
 var deviceTypeMgt = require("../devicetypemanagement");
 var deviceType = require("../devicetype");
 var deviceMgt = require("../devicemanagement");
+var loaderModuler = require("../missedmessages/loader");
 
 try {
 
@@ -22,20 +23,20 @@ try {
     /*
      * list available device types 
      */
-    //var deviceTypeList = deviceTypeMgr.listDeviceTypes();
+    //var deviceTypeList = deviceTypeMgr.listDeviceTypes({"groupIds":"58ad5b79e0102e0f347952e7","deep":"true"});
     //return deviceTypeList;  
     
     /*
      * get an instance of DeviceType
      */
-    //var deviceType = deviceTypeMgr.getDeviceType(deviceTypeId);
+    var deviceType = deviceTypeMgr.getDeviceType(deviceTypeId);
     //return deviceType;
 
     /*
      * Create URL callbacks
      */    
     var callback = {
-        "url": "https://sigfox.scriptrapps.io/modules/sigfox/callbacks/defaultCallback?auth_token=UzIyQTgwRjc2Ng==",
+        "url": "https://alex.scriptrapps.io/callbacks/defaultCallback?auth_token=Q0QxNjdCRTBFRjpzaWdmb3g6MThGNDJGRkVCRTJBQ0E3RTM5MTBDQjBDNTJDNDE4QUU=",
         "contentType": "text/plain"
     };
 
@@ -77,9 +78,37 @@ try {
     //return callbackList;
 
      /*
-      * Delete callback (depends on the preceding test)
+      * Update callback
       */  
-     //return deviceTypeList[0].deleteCallback(callbackList[0].id);
+     var callback = {
+         "url": "https://alex.scriptrapps.io/callbacks/defaultCallback?auth_token=Q0QxNjdCRTBFRjpzaWdmb3g6MThGNDJGRkVCRTJBQ0E3RTM5MTBDQjBDNTJDNDE4QUU=",
+         "enabled": false
+     };
+     return deviceType.updateURLCallback("5da439b9e0102e186cb15302", callback);
+     //return deviceType.updateBatchURLCallback("5da03091e0102e186cb0c7ea", callback);
+     //return deviceType.updateEMAILCallback("5da03091e0102e186cb0c7ea", callback);
+    
+     /*
+      * Delete callback
+      */  
+     //return deviceType.deleteCallback("5da03091e0102e186cb0c7ea");
+    
+    /*
+     * Enable/Disable callbacks
+     */
+    //var resp = deviceType.enableCallback("593ea354e0102e0f347da234");
+    //var resp = deviceType.disableCallback("593ea354e0102e0f347da234");
+    //return resp;
+    
+    var dto = {
+        hexId: "19650"
+        //deviceTypeId: "58ad5ce3e0102e0f34795364"
+        //groupId: "58ad5b79e0102e0f347952e7"
+    };
+    
+    var loader = new loaderModuler.Loader({handlers:{"default": "/sigfox/missedmessages/defaulthandler"}});
+    return loader.loadNextMissedMessages(dto); 
+    
 }catch(exception){
     return exception;
 }

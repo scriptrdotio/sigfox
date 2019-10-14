@@ -1,5 +1,11 @@
 var callbackManagement = require("./callbackmanagement");
 
+const CHANNELTYPE = {
+  EMAIL: "EMAIL",
+  URL: "URL",
+  BATCH_URL: "BATCH_URL"
+};
+
 /**
  * This class wraps all operations that can be done on a specifci Sigfox device type
  * @class DeviceType
@@ -41,7 +47,7 @@ function DeviceType(dto, client) {
 DeviceType.prototype.getInfo = function() {
   
   var requestParameters = {
-    url: config.urlPrefix + "/devicetypes/" + this.id
+    url: config.urlPrefix + "/device-types/" + this.id
   };
   
   var resp = this.client.callApi(requestParameters);
@@ -73,15 +79,17 @@ DeviceType.prototype.getCallbackManager = function() {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
  * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks 
  * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
  * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
  * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
  * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. Optional, defaults to false, optional
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
  * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
  * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). optional. Defaults to the bodyTemplate associated to the content-type
  * @param {Object} [callback.headers]: optional headers of the callback msg
+ * @param {Object} [callback.downlinkHook]: True if this callback is used for downlink, else false, Optional
  * @param {String} [callback.contentType]: optional, one of text/plain, application/json, application/x-www-form-urlencoded (default),
  * @return {Array} array of the ids of the callbacks that were created 
  * @throws {Error}
@@ -97,9 +105,10 @@ DeviceType.prototype.createURLCallbacks = function(list) {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
- * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultCallbacks. IMPORTANT: the url should be suffixed with "var={batch}" 
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.url]: callback URL, if not provided, defaults to /sigfox/callbacks/defaultBatchCallback. IMPORTANT: the url should be suffixed with "var={batch}" 
  * e.g. https://api.scriptrapps.io/sigfox/callbacks/defaultCallbacks?auth_token=123456789&var={batch}. batch will contain the linePattern.
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST"
  * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.)
  * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
  * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
@@ -118,7 +127,7 @@ DeviceType.prototype.createBatchURLCallbacks = function(list) {
  * @param {Array} [list]: array of callback objects
  * @param {Object} [callback]
  * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
- * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3 or 4. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
  * @param {Number} [callback.subject]: the subject of the messages  
  * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages 
  * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.)
@@ -140,7 +149,43 @@ DeviceType.prototype.createEMAILCallbacks = function(list) {
  * @throws {Error}
  */
 DeviceType.prototype.listCallbacks = function(type) {
-  return this.getCallbackManager().listCallbacks(); 
+  return this.getCallbackManager().listCallbacks(type); 
+};
+
+/**
+ * Update a callback based on its id
+ * @method updateCallback
+ * @param {String} id: the identifier of the callback to update
+ * @param {Array}  [list]: array of callback objects
+ * @param {Object} [callback]
+ * @param {Number} [callback.callbackType] : one of 0 (DATA) / default, 1 (SERVICE), 2 (ERROR). Use the CALLBACKTYPE constants declared in this script
+ * @param {Number} [callback.callbackSubtype] : one of 0, 1, 2 (default), 3, 4, 5 or 6. Use CALLBACKSUBTYPE constant declared at the beginning of this script
+ * @param {Number} [callback.subject]: the subject of the messages (EMAIL)
+ * @param {String} [callback.recipient]: the email address of the recipient who will receive the messages (EMAIL)
+ * @param {Object} [callback.message]: the message. Can be a template (i.e. can contain {device}, {time}, {data}, etc.) (EMAIL)
+ * @param {Number} [callback.enabled]: if false, specifies that the callback is not immediately enabled. Optional, defaults to true,
+ * @param {Number} [callback.sendDuplicate]: if true, specifies that Sigfox should duplicate the callback. Optional, defaults to false,
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false, optional
+ * @param {Number} [callback.payloadConfig]: defines the format of the payload to be used by Sigfox. (Check the readme.md file for documentation), optional
+ * @param {Number} [callback.url]: callback URL (URL and BATCH_URL)
+ * @param {Number} [callback.httpMethod]: HTTP Method to use by Sigfox when invoking the callback URL, defaults to "POST" (URL and BATCH_URL)
+ * @param {Number} [callback.linePattern]: linePattern representing a message. Can be a template ({device}, {data}, {time}, etc.) (BATCH_URL)
+ * @param {Number} [callback.sendSni]: if true, specifies that Sigfox should send the Server Name Identification. (URL and BATCH_URL)
+ * @param {Number} [callback.dead]: True if last use of the callback fails, otherwise false
+ * @param {String} [callback.bodyTemplate]: the body template of the request (POST or PUT). (URL)
+ * @param {Object} [callback.headers]: optional headers of the callback msg (URL)
+ * @param {Object} [callback.downlinkHook]: True if this callback is used for downlink (URL) 
+ * @return 
+ * @throws {Error}
+ */
+DeviceType.prototype.updateURLCallback = function(id, list) {
+  return this.getCallbackManager().updateCallback(id, list, CHANNELTYPE.URL);
+};
+DeviceType.prototype.updateBatchURLCallback = function(id, list) {
+  return this.getCallbackManager().updateCallback(id, list, CHANNELTYPE.BATCH_URL);
+};
+DeviceType.prototype.updateEMAILCallback = function(id, list) {
+  return this.getCallbackManager().updateCallback(id, list, CHANNELTYPE.EMAIL);
 };
 
 /**
@@ -151,4 +196,24 @@ DeviceType.prototype.listCallbacks = function(type) {
  */
 DeviceType.prototype.deleteCallback = function(id) {
   return this.getCallbackManager().deleteCallback(id);
+};
+
+/**
+ * @method enableCallback
+ * @param {String} id: the identifier of the callback to enable
+ * @return 
+ * @throws {Error}
+ */
+DeviceType.prototype.enableCallback = function(id) {
+  return this.getCallbackManager().enable(id);
+};
+
+/**
+ * @method disableCallback
+ * @param {String} id: the identifier of the callback to disable
+ * @return 
+ * @throws {Error}
+ */
+DeviceType.prototype.disableCallback = function(id) {
+  return this.getCallbackManager().disable(id);
 };

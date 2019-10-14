@@ -31,8 +31,9 @@ try {
 
 	// load handlers and execute them if any
     for (var i = 0; callbackconfig.handlers && i < callbackconfig.handlers.length; i++){
-        
+        log.info(">>>> handler:" + callbackconfig.handlers[i]);
         var handler = require(callbackconfig.handlers[i]);
+        
         handler.execute(dataObj);
     }
     

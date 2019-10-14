@@ -7,7 +7,7 @@ var password = "44e96a007c9bb6fd96e7a3a430643f12";
 /*
  * Sigfox API prefix
  */
-const urlPrefix = "laxhttps://backend-demo.sigfox.com/api";
+const urlPrefix = "https://backend-demo.sigfox.com/api/v2";
 
 /*
  * Default URL to use as callback endpoint. Replace AUTH_TOKEN with a valid scriptr.io token

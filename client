@@ -23,7 +23,6 @@ function Client(dto) {
  *	{Object} params.params: (optional) the parameters that are expected by the API
  */
 Client.prototype.callApi = function(params) {
-  
   try {   
      return this._callApi(params);
   }catch(response) {
@@ -54,11 +53,15 @@ Client.prototype._callApi = function(params) {
   }
   
   params.url = params.url.indexOf("http") > -1 ? params.url : config.apiUrl + "/" +  config.apiVer + params.url;
-  
-  params.headers = {
-    "Authorization": "Basic " + btoa(this.login + ":" + this.password)
-  };
-  
+  if (params.headers){
+      params.headers = params.headers;
+      params.headers["Authorization"] = "Basic " + btoa(this.login + ":" + this.password);
+  }else{
+      params.headers = {
+        "Authorization": "Basic " + btoa(this.login + ":" + this.password)
+      };
+  }
+    
   //console.log(JSON.stringify(params));
   var response = http.request(params);
   //console.log("Received following response  : " + JSON.stringify(response));

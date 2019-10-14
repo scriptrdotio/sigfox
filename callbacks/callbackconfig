@@ -3,13 +3,12 @@ var specificParser = "";
 
 // path to handlers that can process Sigfox messages
 var handlers = [
-  "./handlers/defaulthandler",
-  "/sigfox_demo/handlers/receive"
+  "./handlers/defaulthandler"
 ];
 
 // define the batch handler to use here
 var batchHandlers = {
     
-    "defaultHandler": "modules/sigfox/callbacks/handlers/defaultbatchhandler",
+    "defaultHandler": "callbacks/handlers/defaultbatchhandler",
     "batchHandler": ""
 };

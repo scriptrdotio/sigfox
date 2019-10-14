@@ -33,25 +33,30 @@ function DeviceTypeManager(dto) {
 /**
  * @method listDeviceTypes
  * @param {Object} [params] : optional parameters
- * @param {Boolean} [params.includeSubGroups]: if true, includes device types of the sub-groups of the current groups. Optional, defaults to false
- * @param {String} [params.contractInfoId]: Sigfox contract id, used in the group 
+ * @param {Array} [params.groupIds]: Search for device types which are attached to a Group. Example: ?groupIds=xx,yy. Optional
+ * @param {Boolean} [params.deep]: When true, if a group identifier is specified, also includes its subgroups. Optional, defaults to false
+ * @param {String} [params.contractId]: Sigfox contract id, used in the group. Optional
  * @return {Array} array of DeviceType objects (@see ./devicetype.DeviceType)
  */
 DeviceTypeManager.prototype.listDeviceTypes = function(params) {
   
   var requestParameters = {
     
-    url: config.urlPrefix + "/devicetypes",
+    url: config.urlPrefix + "/device-types",
     method: "GET",
     params: {}
   };
-  
-  if (params && params.includeSubGroups) {
-    requestParameters.params.includeSubGroups = params.includeSubGroups;
+    
+  if (params && params.groupIds) {
+    requestParameters.params.groupIds = params.groupIds;
+  }
+    
+  if (params && params.deep) {
+    requestParameters.params.deep = params.deep;
   }
   
-  if (params && params.contractInfoId) {
-    requestParameters.params.contractInfoId = params.contractInfoId;
+  if (params && params.contractId) {
+    requestParameters.params.contractId = params.contractId;
   } 
   
   var resp = this.client.callApi(requestParameters).data;
@@ -75,7 +80,7 @@ DeviceTypeManager.prototype.getDeviceType = function(id) {
   
   var requestParameters = {
     
-    url: config.urlPrefix + "/devicetypes/" + id,
+    url: config.urlPrefix + "/device-types/" + id,
     method: "GET"
   };
   
