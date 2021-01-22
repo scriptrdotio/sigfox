@@ -10,13 +10,13 @@ try {
     /*
      * Create an instance of a device in scritr.io and get the network state of the corresponding device on Sigfox
      */
-    var deviceMgr = new deviceMgt.DeviceManager({login:"58ad6c0de0102e0f347954eb", password: "44e96a007c9bb6fd96e7a3a430643f12"});
+    var deviceMgr = new deviceMgt.DeviceManager({login:"sigfox_login", password: "sigfox_password"});
     var device = deviceMgr.getDevice("19650");
     //return device.getNetworkState();
 
     
     /*** Device type operations and callbacks ***/
-    var deviceTypeMgr = new deviceTypeMgt.DeviceTypeManager({login:"58ad6c0de0102e0f347954eb", password: "44e96a007c9bb6fd96e7a3a430643f12"});
+    var deviceTypeMgr = new deviceTypeMgt.DeviceTypeManager({login:"sigfox_login", password: "sigfox_password"});
     // default config for the remainders of the tests 
     var deviceTypeId = "58ad5ce3e0102e0f34795364";
 
