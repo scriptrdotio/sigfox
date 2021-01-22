@@ -36,7 +36,7 @@ try {
      * Create URL callbacks
      */    
     var callback = {
-        "url": "https://alex.scriptrapps.io/callbacks/defaultCallback?auth_token=Q0QxNjdCRTBFRjpzaWdmb3g6MThGNDJGRkVCRTJBQ0E3RTM5MTBDQjBDNTJDNDE4QUU=",
+        "url": "https://your_sub_domain.scriptrapps.io/callbacks/defaultCallback?auth_token=a_valid_scriptr.io_auth_token",
         "contentType": "text/plain"
     };
 
